@@ -1,3 +1,10 @@
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("Unhandled Rejection:", err);
+});
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -10,11 +17,14 @@ const portfolioRoutes = require("./routes/portfolioRoutes");
 
 const app = express();
 
+connectDB();
+
 app.use(cors());
 app.use(express.json());
 
-connectDB();
-
+app.get("/", (req, res) => {
+  res.send("API is running 🚀");
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/portfolio", portfolioRoutes);
