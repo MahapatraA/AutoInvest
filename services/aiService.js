@@ -1,94 +1,58 @@
 const axios = require("axios");
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-// helper: extract JSON safely
-const extractJSON = (text) => {
-  try {
-    const match = text.match(/\{[\s\S]*\}/);
-    return match ? JSON.parse(match[0]) : null;
-  } catch {
-    return null;
-  }
-};
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 exports.getAIResponse = async (message) => {
   try {
     const response = await axios.post(
-  `https://generativelanguage.googleapis.com/v1/models/gemini-1.0-pro:generateContent?key=${GEMINI_API_KEY}`,
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        contents: [
+        model: "llama3-70b-8192", // 🔥 best free model
+        messages: [
           {
-            parts: [
-              {
-                text: `
-You are a professional financial advisor.
-
+            role: "system",
+            content: "You are a financial advisor. Always return JSON only."
+          },
+          {
+            role: "user",
+            content: `
 User: ${message}
 
 Suggest investment allocation.
 
-Return ONLY valid JSON:
+Return ONLY JSON:
 {
   "options": [
-    { "name": "Nifty 50", "allocation": 50 },
-    { "name": "Gold", "allocation": 50 }
+    { "name": "", "allocation": number }
   ]
 }
-
-Rules:
-- allocations must sum to 100
-- no explanation outside JSON
-`
-              }
-            ]
+            `
           }
-        ]
+        ],
+        temperature: 0.7
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    // 🔍 Debug logs (very important)
-    console.log("FULL GEMINI RESPONSE:", JSON.stringify(response.data));
+    const text = response.data.choices[0].message.content;
 
-    const data = response.data;
-
-    // ✅ check candidates
-    if (!data || !data.candidates || data.candidates.length === 0) {
-      return {
-        error: "No candidates returned from Gemini",
-        raw: data
-      };
-    }
-
-    const rawText =
-      data.candidates[0]?.content?.parts?.[0]?.text;
-
-    console.log("RAW TEXT:", rawText);
-
-    if (!rawText) {
-      return {
-        error: "No text returned from Gemini",
-        raw: data
-      };
-    }
-
-    // ✅ extract JSON
-    const parsed = extractJSON(rawText);
-
-    if (!parsed) {
+    // 🔥 parse JSON safely
+    try {
+      return JSON.parse(text);
+    } catch {
       return {
         error: "Invalid JSON from AI",
-        raw: rawText
+        raw: text
       };
     }
 
-    return parsed;
-
   } catch (error) {
-    console.error(
-      "GEMINI ERROR:",
-      error.response?.data || error.message
-    );
+    console.error("GROQ ERROR:", error.response?.data || error.message);
 
     return {
       error: "AI service failed",

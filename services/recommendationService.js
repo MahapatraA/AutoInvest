@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 exports.getRecommendation = async (investment) => {
   try {
@@ -10,7 +10,7 @@ Invested: ${investment.amount}
 Current: ${investment.currentValue}
 Returns: ${investment.returns}
 
-Suggest HOLD / EXIT / BUY MORE with reason.
+Suggest HOLD / EXIT / BUY MORE.
 
 Return ONLY JSON:
 {
@@ -20,33 +20,40 @@ Return ONLY JSON:
 `;
 
     const response = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      "https://api.groq.com/openai/v1/chat/completions",
       {
-        contents: [
-          {
-            parts: [{ text: prompt }]
-          }
-        ]
+        model: "llama3-70b-8192",
+        messages: [
+          { role: "system", content: "You are a financial advisor." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
       }
     );
 
-    const content =
-      response.data.candidates[0].content.parts[0].text;
+    const text = response.data.choices[0].message.content;
 
     try {
-      return JSON.parse(content);
-    } catch (err) {
+      return JSON.parse(text);
+    } catch {
       return {
-        error: "Invalid AI response",
-        raw: content
+        error: "Invalid JSON",
+        raw: text
       };
     }
 
-  } catch (error) {
-    console.error("GEMINI ERROR:", error.response?.data || error.message);
+  } catch (err) {
+    console.error("RECOMMENDATION ERROR:", err.response?.data || err.message);
 
     return {
-      error: "AI service failed"
+      error: "AI failed",
+      raw: err.response?.data || err.message
     };
   }
 };
