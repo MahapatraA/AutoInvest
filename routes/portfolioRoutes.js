@@ -10,10 +10,19 @@ const {
   updatePrices
 } = require("../controllers/portfolioController");
 
+// Manual investment
 router.post("/invest", auth, invest);
+
+// AI auto investment
+router.post("/auto-invest", auth, autoInvest);
+
+// Update simulated prices
+router.post("/update-prices", auth, updatePrices);
+
+// Basic portfolio
 router.get("/", auth, getPortfolio);
+
+// Detailed analytics
 router.get("/detailed", auth, getDetailed);
-router.post("/auto-invest", auth, autoInvest);   // NEW
-router.post("/update-prices", auth, updatePrices); // NEW
 
 module.exports = router;
