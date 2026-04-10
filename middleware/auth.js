@@ -14,7 +14,8 @@ module.exports = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.user = decoded.id; // MUST exist
+    // Keep a stable shape for downstream controllers.
+    req.user = { id: decoded.id };
     next();
   } catch (err) {
     console.error("AUTH ERROR:", err);

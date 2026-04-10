@@ -1,32 +1,40 @@
 const Portfolio = require("../models/Portfolio");
 
+const findPortfolioByUser = async (userId) => {
+  return Portfolio.findOne({ $or: [{ user: userId }, { userId }] });
+};
+
 
 // ✅ Manual Investment
 const invest = async (req, res) => {
   try {
     const userId = req.user.id;
     const { name, amount } = req.body;
+    const numericAmount = Number(amount);
 
-    if (!name || !amount) {
+    if (!name || Number.isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ msg: "Missing fields" });
     }
 
-    let portfolio = await Portfolio.findOne({ user: userId });
+    let portfolio = await findPortfolioByUser(userId);
 
     const newInvestment = {
       name,
       allocation: 100,
-      investedAmount: amount,
-      currentValue: amount,
+      investedAmount: numericAmount,
+      currentValue: numericAmount,
       returns: 0
     };
 
     if (!portfolio) {
       portfolio = new Portfolio({
         user: userId,
+        userId,
         investments: [newInvestment]
       });
     } else {
+      portfolio.user = portfolio.user || userId;
+      portfolio.userId = portfolio.userId || userId;
       portfolio.investments.push(newInvestment);
     }
 
@@ -50,7 +58,7 @@ const getPortfolio = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const portfolio = await Portfolio.findOne({ user: userId });
+    const portfolio = await findPortfolioByUser(userId);
 
     if (!portfolio) {
       return res.json({ investments: [] });
@@ -71,7 +79,7 @@ const getDetailed = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const portfolio = await Portfolio.findOne({ user: userId });
+    const portfolio = await findPortfolioByUser(userId);
 
     if (!portfolio) {
       return res.json({
@@ -86,8 +94,8 @@ const getDetailed = async (req, res) => {
     let totalCurrent = 0;
 
     portfolio.investments.forEach(inv => {
-      totalInvested += inv.investedAmount;
-      totalCurrent += inv.currentValue;
+      totalInvested += Number(inv.investedAmount || 0);
+      totalCurrent += Number(inv.currentValue || 0);
     });
 
     const totalReturns = totalCurrent - totalInvested;
@@ -112,27 +120,31 @@ const autoInvest = async (req, res) => {
   try {
     const userId = req.user.id;
     const { options, totalAmount } = req.body;
+    const numericTotalAmount = Number(totalAmount);
 
-    if (!options || !totalAmount) {
+    if (!Array.isArray(options) || Number.isNaN(numericTotalAmount) || numericTotalAmount <= 0) {
       return res.status(400).json({ msg: "Missing data" });
     }
 
     const investments = options.map(opt => ({
       name: opt.name,
       allocation: opt.allocation,
-      investedAmount: (opt.allocation / 100) * totalAmount,
-      currentValue: (opt.allocation / 100) * totalAmount,
+      investedAmount: (opt.allocation / 100) * numericTotalAmount,
+      currentValue: (opt.allocation / 100) * numericTotalAmount,
       returns: 0
     }));
 
-    let portfolio = await Portfolio.findOne({ user: userId });
+    let portfolio = await findPortfolioByUser(userId);
 
     if (!portfolio) {
       portfolio = new Portfolio({
         user: userId,
+        userId,
         investments
       });
     } else {
+      portfolio.user = portfolio.user || userId;
+      portfolio.userId = portfolio.userId || userId;
       portfolio.investments.push(...investments);
     }
 
@@ -156,7 +168,7 @@ const updatePrices = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const portfolio = await Portfolio.findOne({ user: userId });
+    const portfolio = await findPortfolioByUser(userId);
 
     if (!portfolio) {
       return res.status(404).json({ msg: "No portfolio found" });
