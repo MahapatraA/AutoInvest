@@ -2,26 +2,49 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-exports.register = async (req, res) => {
-  const { email, password } = req.body;
-
-  const hashed = await bcrypt.hash(password, 10);
-  const user = new User({ email, password: hashed });
-
-  await user.save();
-  res.json({ message: "User registered" });
-};
-
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    console.log("LOGIN BODY:", req.body);
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ msg: "User not found" });
+    const { email, password } = req.body;
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ msg: "Invalid credentials" });
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Missing email or password" });
+    }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+    const user = await User.findOne({ email });
 
-  res.json({ token });
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Invalid credentials" });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET missing!");
+      return res.status(500).json({ msg: "Server config error" });
+    }
+
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email
+      }
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ msg: "Internal server error" });
+  }
 };
