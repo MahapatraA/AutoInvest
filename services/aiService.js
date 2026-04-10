@@ -67,8 +67,11 @@ Rules:
       error.response?.data || error.message
     );
 
-    return {
-      error: "AI service temporarily unavailable"
-    };
+    console.log("FULL GEMINI RESPONSE:", response.data);
+
+const rawText =
+  response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+console.log("RAW TEXT:", rawText);
   }
 };
