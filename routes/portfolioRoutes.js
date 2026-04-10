@@ -14,7 +14,7 @@ const {
 router.post("/invest", auth, invest);
 
 // AI auto investment
-router.post("/auto-invest", auth, autoInvest);
+router.post("/auto-invest", autoInvest);
 
 // Update simulated prices
 router.post("/update-prices", auth, updatePrices);

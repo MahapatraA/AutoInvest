@@ -41,6 +41,10 @@ exports.autoInvest = async (req, res) => {
     console.log("USER:", req.user);
     console.log("BODY:", req.body);
 
+    if (!req.user) {
+      return res.status(401).json({ msg: "User not authenticated" });
+    }
+
     const { options, totalAmount } = req.body;
 
     if (!options || !Array.isArray(options) || !totalAmount) {
@@ -50,7 +54,10 @@ exports.autoInvest = async (req, res) => {
     let portfolio = await Portfolio.findOne({ userId: req.user });
 
     if (!portfolio) {
-      portfolio = new Portfolio({ userId: req.user, investments: [] });
+      portfolio = new Portfolio({
+        userId: req.user,
+        investments: []
+      });
     }
 
     for (let opt of options) {
@@ -58,7 +65,6 @@ exports.autoInvest = async (req, res) => {
 
       const investAmount = (opt.allocation / 100) * totalAmount;
 
-      // Simulated price (replace later with real API)
       const price = 100 + Math.random() * 50;
       const units = investAmount / price;
 
@@ -74,10 +80,10 @@ exports.autoInvest = async (req, res) => {
 
     await portfolio.save();
 
-    res.json({ message: "Auto investment completed 🚀" });
+    return res.json({ message: "Auto investment completed 🚀" });
   } catch (err) {
     console.error("AUTO INVEST ERROR:", err);
-    res.status(500).json({ msg: "Auto invest failed" });
+    return res.status(500).json({ msg: "Auto invest failed" });
   }
 };
 
