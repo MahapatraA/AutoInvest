@@ -3,26 +3,26 @@ const router = express.Router();
 const auth = require("../middleware/auth");
 
 const {
-  invest,
-  getPortfolio,
-  getDetailed,
+  //invest,
+  //getPortfolio,
+  //getDetailed,
   autoInvest,
-  updatePrices
+  //updatePrices
 } = require("../controllers/portfolioController");
 
 // Manual investment
-router.post("/invest", auth, invest);
+//router.post("/invest", auth, invest);
 
 // AI auto investment
 router.post("/auto-invest", auth, autoInvest); // ✅ FIXED
 
 // Update simulated prices
-router.post("/update-prices", auth, updatePrices);
+/*router.post("/update-prices", auth, updatePrices);
 
 // Basic portfolio
 router.get("/", auth, getPortfolio);
 
 // Detailed analytics
-router.get("/detailed", auth, getDetailed);
+router.get("/detailed", auth, getDetailed);*/
 
 module.exports = router;
