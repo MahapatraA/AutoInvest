@@ -1,15 +1,31 @@
 const User = require("../models/User");
-const { getAdvice } = require("../services/aiService");
+const { getAIResponse } = require("../services/aiService");
 
 exports.chat = async (req, res) => {
-  const { message } = req.body;
+  try {
+    const { message } = req.body;
 
-  const user = await User.findById(req.user);
+    if (!message) {
+      return res.status(400).json({ msg: "Message required" });
+    }
 
-  const aiResponse = await getAdvice(message, user);
+    const aiResponse = await getAIResponse(message);
 
-  res.json({
-  options: aiResponse.options,
-  explanation: aiResponse.explanation
-});
+    // handle AI error
+    if (aiResponse.error) {
+      return res.json({
+        message: "AI failed, try again",
+        raw: aiResponse.raw || null
+      });
+    }
+
+    // SUCCESS → structured response
+    res.json({
+      investment: aiResponse
+    });
+
+  } catch (err) {
+    console.error("CHAT ERROR:", err);
+    res.status(500).json({ msg: "Internal server error" });
+  }
 };
