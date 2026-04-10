@@ -7,7 +7,7 @@ exports.getAIResponse = async (message) => {
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama3-8b-8192", // 🔥 best free model
+        model: "llama-3.1-8b-instant", // 🔥 best free model
         messages: [
           {
             role: "system",
