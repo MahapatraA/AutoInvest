@@ -8,5 +8,8 @@ exports.chat = async (req, res) => {
 
   const aiResponse = await getAdvice(message, user);
 
-  res.json(aiResponse);
+  res.json({
+  options: aiResponse.options,
+  explanation: aiResponse.explanation
+});
 };

@@ -1,54 +1,121 @@
 const Portfolio = require("../models/Portfolio");
-const { getRecommendation } = require("../services/recommendationService");
 
+// 🟢 Manual Invest (fixing your existing one too)
 exports.invest = async (req, res) => {
-  const { selectedFunds, amount } = req.body;
+  try {
+    const { name, amount, buyPrice } = req.body;
 
-  let portfolio = await Portfolio.findOne({ userId: req.user });
+    let portfolio = await Portfolio.findOne({ userId: req.user });
 
-  if (!portfolio) {
-    portfolio = new Portfolio({ userId: req.user, investments: [] });
-  }
+    if (!portfolio) {
+      portfolio = new Portfolio({ userId: req.user, investments: [] });
+    }
 
-  selectedFunds.forEach(fund => {
-    const investAmount = amount / selectedFunds.length;
-
-    const growth = 1 + (Math.random() * 0.2 - 0.1);
-    const currentValue = investAmount * growth;
+    const units = amount / buyPrice;
 
     portfolio.investments.push({
-      name: fund,
-      amount: investAmount,
-      currentValue,
-      returns: currentValue - investAmount
+      name,
+      amount,
+      buyPrice,
+      currentPrice: buyPrice,
+      units,
+      type: "manual"
     });
-  });
 
-  await portfolio.save();
+    await portfolio.save();
 
-  res.json({ message: "Investment done" });
+    res.json({ message: "Manual investment added" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Server error" });
+  }
 };
 
+// 🤖 AUTO INVEST (from AI)
+exports.autoInvest = async (req, res) => {
+  try {
+    const { options, totalAmount } = req.body;
+
+    let portfolio = await Portfolio.findOne({ userId: req.user });
+
+    if (!portfolio) {
+      portfolio = new Portfolio({ userId: req.user, investments: [] });
+    }
+
+    for (let opt of options) {
+      const investAmount = (opt.allocation / 100) * totalAmount;
+
+      // 🔴 Replace later with real API
+      const price = 100 + Math.random() * 50;
+
+      const units = investAmount / price;
+
+      portfolio.investments.push({
+        name: opt.name,
+        amount: investAmount,
+        buyPrice: price,
+        currentPrice: price,
+        units,
+        type: "AI"
+      });
+    }
+
+    await portfolio.save();
+
+    res.json({ message: "Auto investment completed 🚀" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Auto invest failed" });
+  }
+};
+
+// 📊 GET PORTFOLIO (with calculations)
 exports.getPortfolio = async (req, res) => {
-  const portfolio = await Portfolio.findOne({ userId: req.user });
-  res.json(portfolio);
-};
+  try {
+    const portfolio = await Portfolio.findOne({ userId: req.user });
 
-exports.getDetailed = async (req, res) => {
-  const portfolio = await Portfolio.findOne({ userId: req.user });
+    if (!portfolio) return res.json({ investments: [], totalValue: 0 });
 
-  if (!portfolio) return res.json([]);
-
-  const data = await Promise.all(
-    portfolio.investments.map(async inv => {
-      const recommendation = await getRecommendation(inv);
+    const investments = portfolio.investments.map(inv => {
+      const currentValue = inv.units * inv.currentPrice;
+      const returns = currentValue - inv.amount;
 
       return {
         ...inv._doc,
-        recommendation
+        currentValue,
+        returns
       };
-    })
-  );
+    });
 
-  res.json(data);
+    const totalValue = investments.reduce(
+      (sum, inv) => sum + inv.currentValue,
+      0
+    );
+
+    res.json({ investments, totalValue });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Error fetching portfolio" });
+  }
+};
+
+// 🔄 UPDATE PRICES (simulate market)
+exports.updatePrices = async (req, res) => {
+  try {
+    const portfolio = await Portfolio.findOne({ userId: req.user });
+
+    if (!portfolio) return res.json({ message: "No portfolio" });
+
+    portfolio.investments.forEach(inv => {
+      const change = 1 + (Math.random() * 0.1 - 0.05);
+      inv.currentPrice = inv.currentPrice * change;
+    });
+
+    await portfolio.save();
+
+    res.json({ message: "Prices updated" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Price update failed" });
+  }
 };
