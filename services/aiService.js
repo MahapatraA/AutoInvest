@@ -2,7 +2,7 @@ const axios = require("axios");
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-// helper to safely extract JSON
+// helper: extract JSON safely
 const extractJSON = (text) => {
   try {
     const match = text.match(/\{[\s\S]*\}/);
@@ -47,14 +47,37 @@ Rules:
       }
     );
 
-    const rawText =
-      response.data.candidates[0].content.parts[0].text;
+    // 🔍 Debug logs (very important)
+    console.log("FULL GEMINI RESPONSE:", JSON.stringify(response.data));
 
+    const data = response.data;
+
+    // ✅ check candidates
+    if (!data || !data.candidates || data.candidates.length === 0) {
+      return {
+        error: "No candidates returned from Gemini",
+        raw: data
+      };
+    }
+
+    const rawText =
+      data.candidates[0]?.content?.parts?.[0]?.text;
+
+    console.log("RAW TEXT:", rawText);
+
+    if (!rawText) {
+      return {
+        error: "No text returned from Gemini",
+        raw: data
+      };
+    }
+
+    // ✅ extract JSON
     const parsed = extractJSON(rawText);
 
     if (!parsed) {
       return {
-        error: "Invalid AI response",
+        error: "Invalid JSON from AI",
         raw: rawText
       };
     }
@@ -67,11 +90,9 @@ Rules:
       error.response?.data || error.message
     );
 
-    console.log("FULL GEMINI RESPONSE:", response.data);
-
-const rawText =
-  response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
-console.log("RAW TEXT:", rawText);
+    return {
+      error: "AI service failed",
+      raw: error.response?.data || error.message
+    };
   }
 };
