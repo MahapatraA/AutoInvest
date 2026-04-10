@@ -1,42 +1,29 @@
-const OpenAI = require("openai");
+const axios = require("axios");
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-exports.getAdvice = async (message, user) => {
-  const prompt = `
-  User Risk: ${user.riskProfile}
-  Monthly Investment: ${user.monthlyInvestment}
-
-  Message: ${message}
-
-  Suggest 3 investment options with allocation.
-  Return JSON:
-  {
-    "options":[
-      {"name":"","risk":"","allocation":0}
-    ],
-    "explanation":""
-  }
-  `;
-
-  const response = await client.chat.completions.create({
-    model: "gpt-4.1-mini",
-    messages: [
-      { role: "user", content: prompt }
-    ],
-    temperature: 0.7
-  });
-
-  const content = response.choices[0].message.content;
-
+exports.getAIResponse = async (message) => {
   try {
-  return JSON.parse(content);
-} catch (err) {
-  return {
-    error: "Invalid AI response",
-    raw: content
-  };
-}
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        contents: [
+          {
+            parts: [
+              {
+                text: `You are a financial advisor. Suggest investment allocation clearly.\nUser: ${message}`
+              }
+            ]
+          }
+        ]
+      }
+    );
+
+    return response.data.candidates[0].content.parts[0].text;
+
+  } catch (error) {
+    console.error("GEMINI ERROR:", error.response?.data || error.message);
+
+    return "AI service temporarily unavailable.";
+  }
 };
