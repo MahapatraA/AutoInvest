@@ -106,7 +106,10 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || "0.0.0.0";
+const configuredHost = String(process.env.HOST || "").trim().toLowerCase();
+const HOST = !configuredHost || configuredHost === "localhost" || configuredHost === "127.0.0.1"
+  ? "0.0.0.0"
+  : process.env.HOST;
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Server is running on ${HOST}:${PORT}`);
