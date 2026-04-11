@@ -47,10 +47,11 @@ CORS_ALLOWED_ORIGINS=*
 
 ### Notes
 
-- `HOST` defaults to `0.0.0.0`, so local server can accept connections from other devices.
+- `HOST` falls back to `0.0.0.0` when it is unset or set to a loopback value (`localhost`, `127.0.0.1`, `::1`), so local server can accept connections from other devices.
 - If MongoDB is temporarily unreachable, the API process now stays up and keeps retrying instead of exiting.
 - `CORS_ALLOWED_ORIGINS` accepts a comma-separated list.
 - Origins are normalized (parsed to URL origin, trailing slash removed, lowercased) before matching.
 - `CORS_ALLOWED_ORIGIN_PATTERNS` accepts comma-separated wildcard patterns (for dynamic subdomains).
 - CORS preflight now echoes requested headers automatically (falls back to `Content-Type, Authorization`).
 - Non-browser clients (mobile native apps/Postman/curl) are accepted without an Origin header.
+- On startup, the server logs LAN URLs (for example `http://192.168.1.10:3000`) when bound to `0.0.0.0`.
