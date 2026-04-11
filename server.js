@@ -8,6 +8,7 @@ process.on("unhandledRejection", (err) => {
 
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 require("dotenv").config();
 
 const connectDB = require("./config/db");
@@ -96,6 +97,10 @@ app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", uptime: process.uptime() });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/portfolio", portfolioRoutes);
@@ -103,7 +108,7 @@ app.use("/api/portfolio", portfolioRoutes);
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || "0.0.0.0";
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`Server is running on ${HOST}:${PORT}`);
   const patternLog = allowedOriginPatterns.length
     ? ` | patterns: ${allowedOriginPatterns.join(", ")}`
@@ -112,3 +117,33 @@ app.listen(PORT, HOST, () => {
     `CORS mode: ${allowAllOrigins ? "allow all" : allowedOrigins.join(", ")}${patternLog}`
   );
 });
+
+let isShuttingDown = false;
+
+const shutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  console.log(`${signal} received. Shutting down gracefully...`);
+
+  server.close(async () => {
+    try {
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.connection.close();
+        console.log("MongoDB connection closed.");
+      }
+      process.exit(0);
+    } catch (error) {
+      console.error("Error during shutdown:", error);
+      process.exit(1);
+    }
+  });
+
+  setTimeout(() => {
+    console.error("Forced shutdown after timeout.");
+    process.exit(1);
+  }, 10000).unref();
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
