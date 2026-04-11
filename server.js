@@ -20,7 +20,20 @@ const app = express();
 
 connectDB();
 
-const normalizeOrigin = (origin = "") => origin.trim().replace(/\/+$/, "").toLowerCase();
+const normalizeOrigin = (origin = "") => {
+  const trimmed = String(origin).trim();
+  if (!trimmed) return "";
+
+  if (trimmed === "*") return "*";
+
+  try {
+    return new URL(trimmed).origin.toLowerCase();
+  } catch (_err) {
+    return trimmed.replace(/\/+$/, "").toLowerCase();
+  }
+};
+
+const normalizePattern = (pattern = "") => String(pattern).trim().replace(/\/+$/, "").toLowerCase();
 
 const parseAllowedOrigins = () => {
   const origins = (process.env.CORS_ALLOWED_ORIGINS || "")
@@ -31,8 +44,19 @@ const parseAllowedOrigins = () => {
   return origins.length > 0 ? origins : ["*"];
 };
 
+const parseAllowedOriginPatterns = () =>
+  (process.env.CORS_ALLOWED_ORIGIN_PATTERNS || "")
+    .split(",")
+    .map((pattern) => normalizePattern(pattern))
+    .filter(Boolean);
+
+const wildcardToRegExp = (pattern = "") =>
+  new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`, "i");
+
 const allowedOrigins = parseAllowedOrigins();
 const allowAllOrigins = allowedOrigins.includes("*");
+const allowedOriginPatterns = parseAllowedOriginPatterns();
+const allowedOriginPatternRegexes = allowedOriginPatterns.map((pattern) => wildcardToRegExp(pattern));
 
 app.use(
   cors({
@@ -44,7 +68,9 @@ app.use(
 
       const requestOrigin = normalizeOrigin(origin);
 
-      if (allowAllOrigins || allowedOrigins.includes(requestOrigin)) {
+      const matchesPattern = allowedOriginPatternRegexes.some((regex) => regex.test(requestOrigin));
+
+      if (allowAllOrigins || allowedOrigins.includes(requestOrigin) || matchesPattern) {
         return callback(null, true);
       }
 
@@ -72,5 +98,10 @@ const HOST = process.env.HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`Server is running on ${HOST}:${PORT}`);
-  console.log(`CORS mode: ${allowAllOrigins ? "allow all" : allowedOrigins.join(", ")}`);
+  const patternLog = allowedOriginPatterns.length
+    ? ` | patterns: ${allowedOriginPatterns.join(", ")}`
+    : "";
+  console.log(
+    `CORS mode: ${allowAllOrigins ? "allow all" : allowedOrigins.join(", ")}${patternLog}`
+  );
 });
