@@ -19,155 +19,47 @@ const portfolioRoutes = require("./routes/portfolioRoutes");
 
 const app = express();
 
-connectDB();
+// ✅ Connect to MongoDB safely
+connectDB()
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.error("MongoDB Connection Failed:", err));
 
-const normalizeOrigin = (origin = "") => {
-  const trimmed = String(origin).trim();
-  if (!trimmed) return "";
-
-  if (trimmed === "*") return "*";
-
-  try {
-    return new URL(trimmed).origin.toLowerCase();
-  } catch (_err) {
-    return trimmed.replace(/\/+$/, "").toLowerCase();
-  }
-};
-
-const normalizePattern = (pattern = "") => String(pattern).trim().replace(/\/+$/, "").toLowerCase();
-
-const parseAllowedOrigins = () => {
-  const origins = (process.env.CORS_ALLOWED_ORIGINS || "")
-    .split(",")
-    .map((origin) => normalizeOrigin(origin))
-    .filter(Boolean);
-
-  return origins.length > 0 ? origins : ["*"];
-};
-
-const parseAllowedOriginPatterns = () =>
-  (process.env.CORS_ALLOWED_ORIGIN_PATTERNS || "")
-    .split(",")
-    .map((pattern) => normalizePattern(pattern))
-    .filter(Boolean);
-
-const wildcardToRegExp = (pattern = "") =>
-  new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`, "i");
-
-const allowedOrigins = parseAllowedOrigins();
-const allowAllOrigins = allowedOrigins.includes("*");
-const allowedOriginPatterns = parseAllowedOriginPatterns();
-const allowedOriginPatternRegexes = allowedOriginPatterns.map((pattern) => wildcardToRegExp(pattern));
-const defaultAllowedHeaders = ["Content-Type", "Authorization"];
-
+// ✅ Simple CORS (allow all for now)
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow non-browser clients (e.g., mobile apps, Postman, curl).
-      if (!origin) {
-        return callback(null, true);
-      }
-
-      const requestOrigin = normalizeOrigin(origin);
-
-      const matchesPattern = allowedOriginPatternRegexes.some((regex) => regex.test(requestOrigin));
-
-      if (allowAllOrigins || allowedOrigins.includes(requestOrigin) || matchesPattern) {
-        return callback(null, true);
-      }
-
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: (req, callback) => {
-      const requestedHeaders = req.header("access-control-request-headers");
-      if (requestedHeaders) {
-        return callback(null, requestedHeaders);
-      }
-      return callback(null, defaultAllowedHeaders);
-    },
-    credentials: true,
-    optionsSuccessStatus: 204,
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
+// ✅ Middleware
 app.use(express.json());
 
+// ✅ Root route (Railway needs this)
 app.get("/", (req, res) => {
   res.send("API is running 🚀");
 });
 
+// ✅ Health check route
 app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", uptime: process.uptime() });
+  res.status(200).json({
+    status: "ok",
+    uptime: process.uptime(),
+    message: "Server is healthy ✅",
+  });
 });
 
+// ✅ API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 
-const os = require("os");
-
-const getPublicNetworkAddresses = () => {
-  const interfaces = os.networkInterfaces();
-  return Object.values(interfaces)
-    .flat()
-    .filter(Boolean)
-    .filter((entry) => !entry.internal && entry.family === "IPv4")
-    .map((entry) => entry.address);
-};
-
+// ✅ Use Railway port
 const PORT = process.env.PORT || 3000;
-const configuredHost = String(process.env.HOST || "").trim();
-const normalizedHost = configuredHost.toLowerCase();
-const loopbackHosts = new Set(["", "localhost", "127.0.0.1", "::1"]);
-const HOST = loopbackHosts.has(normalizedHost) ? "0.0.0.0" : configuredHost;
 
-const server = app.listen(PORT, HOST, () => {
-  console.log(`Server is running on ${HOST}:${PORT}`);
-  if (HOST === "0.0.0.0") {
-    const networkAddresses = getPublicNetworkAddresses();
-    if (networkAddresses.length > 0) {
-      console.log(
-        `Reachable on local network: ${networkAddresses
-          .map((address) => `http://${address}:${PORT}`)
-          .join(", ")}`
-      );
-    }
-  }
-  const patternLog = allowedOriginPatterns.length
-    ? ` | patterns: ${allowedOriginPatterns.join(", ")}`
-    : "";
-  console.log(
-    `CORS mode: ${allowAllOrigins ? "allow all" : allowedOrigins.join(", ")}${patternLog}`
-  );
+// ❗ IMPORTANT: Do NOT use HOST or shutdown logic
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
-
-let isShuttingDown = false;
-
-const shutdown = async (signal) => {
-  if (isShuttingDown) return;
-  isShuttingDown = true;
-
-  console.log(`${signal} received. Shutting down gracefully...`);
-
-  server.close(async () => {
-    try {
-      if (mongoose.connection.readyState !== 0) {
-        await mongoose.connection.close();
-        console.log("MongoDB connection closed.");
-      }
-      process.exit(0);
-    } catch (error) {
-      console.error("Error during shutdown:", error);
-      process.exit(1);
-    }
-  });
-
-  setTimeout(() => {
-    console.error("Forced shutdown after timeout.");
-    process.exit(1);
-  }, 10000).unref();
-};
-
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+```
