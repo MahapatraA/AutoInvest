@@ -57,6 +57,7 @@ const allowedOrigins = parseAllowedOrigins();
 const allowAllOrigins = allowedOrigins.includes("*");
 const allowedOriginPatterns = parseAllowedOriginPatterns();
 const allowedOriginPatternRegexes = allowedOriginPatterns.map((pattern) => wildcardToRegExp(pattern));
+const defaultAllowedHeaders = ["Content-Type", "Authorization"];
 
 app.use(
   cors({
@@ -77,7 +78,13 @@ app.use(
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: (req, callback) => {
+      const requestedHeaders = req.header("access-control-request-headers");
+      if (requestedHeaders) {
+        return callback(null, requestedHeaders);
+      }
+      return callback(null, defaultAllowedHeaders);
+    },
     credentials: true,
     optionsSuccessStatus: 204,
   })

@@ -52,4 +52,5 @@ CORS_ALLOWED_ORIGINS=*
 - `CORS_ALLOWED_ORIGINS` accepts a comma-separated list.
 - Origins are normalized (parsed to URL origin, trailing slash removed, lowercased) before matching.
 - `CORS_ALLOWED_ORIGIN_PATTERNS` accepts comma-separated wildcard patterns (for dynamic subdomains).
+- CORS preflight now echoes requested headers automatically (falls back to `Content-Type, Authorization`).
 - Non-browser clients (mobile native apps/Postman/curl) are accepted without an Origin header.
