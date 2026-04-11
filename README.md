@@ -48,6 +48,7 @@ CORS_ALLOWED_ORIGINS=*
 ### Notes
 
 - `HOST` defaults to `0.0.0.0`, so local server can accept connections from other devices.
+- If MongoDB is temporarily unreachable, the API process now stays up and keeps retrying instead of exiting.
 - `CORS_ALLOWED_ORIGINS` accepts a comma-separated list.
 - Origins are normalized (parsed to URL origin, trailing slash removed, lowercased) before matching.
 - `CORS_ALLOWED_ORIGIN_PATTERNS` accepts comma-separated wildcard patterns (for dynamic subdomains).
