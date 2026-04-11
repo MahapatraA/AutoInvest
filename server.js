@@ -20,10 +20,12 @@ const app = express();
 
 connectDB();
 
+const normalizeOrigin = (origin = "") => origin.trim().replace(/\/+$/, "").toLowerCase();
+
 const parseAllowedOrigins = () => {
   const origins = (process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
-    .map((origin) => origin.trim())
+    .map((origin) => normalizeOrigin(origin))
     .filter(Boolean);
 
   return origins.length > 0 ? origins : ["*"];
@@ -40,14 +42,18 @@ app.use(
         return callback(null, true);
       }
 
-      if (allowAllOrigins || allowedOrigins.includes(origin)) {
+      const requestOrigin = normalizeOrigin(origin);
+
+      if (allowAllOrigins || allowedOrigins.includes(requestOrigin)) {
         return callback(null, true);
       }
 
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    optionsSuccessStatus: 204,
   })
 );
 
