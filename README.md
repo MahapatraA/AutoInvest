@@ -31,6 +31,14 @@ CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
 CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com/
 ```
 
+If you use preview URLs that change often (for example Vercel previews), use wildcard patterns:
+
+```env
+CORS_ALLOWED_ORIGIN_PATTERNS=https://*.vercel.app,https://preview-*.yourdomain.com
+```
+
+`CORS_ALLOWED_ORIGIN_PATTERNS` supports `*` wildcards and is matched against the request origin.
+
 For development, you can allow all origins:
 
 ```env
@@ -41,5 +49,6 @@ CORS_ALLOWED_ORIGINS=*
 
 - `HOST` defaults to `0.0.0.0`, so local server can accept connections from other devices.
 - `CORS_ALLOWED_ORIGINS` accepts a comma-separated list.
-- Origins are normalized (trimmed, trailing slash removed, lowercased) before matching.
+- Origins are normalized (parsed to URL origin, trailing slash removed, lowercased) before matching.
+- `CORS_ALLOWED_ORIGIN_PATTERNS` accepts comma-separated wildcard patterns (for dynamic subdomains).
 - Non-browser clients (mobile native apps/Postman/curl) are accepted without an Origin header.
