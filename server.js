@@ -105,14 +105,35 @@ app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 
+const os = require("os");
+
+const getPublicNetworkAddresses = () => {
+  const interfaces = os.networkInterfaces();
+  return Object.values(interfaces)
+    .flat()
+    .filter(Boolean)
+    .filter((entry) => !entry.internal && entry.family === "IPv4")
+    .map((entry) => entry.address);
+};
+
 const PORT = process.env.PORT || 3000;
-const configuredHost = String(process.env.HOST || "").trim().toLowerCase();
-const HOST = !configuredHost || configuredHost === "localhost" || configuredHost === "127.0.0.1"
-  ? "0.0.0.0"
-  : process.env.HOST;
+const configuredHost = String(process.env.HOST || "").trim();
+const normalizedHost = configuredHost.toLowerCase();
+const loopbackHosts = new Set(["", "localhost", "127.0.0.1", "::1"]);
+const HOST = loopbackHosts.has(normalizedHost) ? "0.0.0.0" : configuredHost;
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Server is running on ${HOST}:${PORT}`);
+  if (HOST === "0.0.0.0") {
+    const networkAddresses = getPublicNetworkAddresses();
+    if (networkAddresses.length > 0) {
+      console.log(
+        `Reachable on local network: ${networkAddresses
+          .map((address) => `http://${address}:${PORT}`)
+          .join(", ")}`
+      );
+    }
+  }
   const patternLog = allowedOriginPatterns.length
     ? ` | patterns: ${allowedOriginPatterns.join(", ")}`
     : "";
