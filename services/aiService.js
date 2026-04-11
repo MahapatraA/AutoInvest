@@ -58,6 +58,11 @@ const parseExplicitPercentAllocations = (message) => {
   return allocations;
 };
 
+const isGenericBucketName = (name = "") => /\b(other|others|remaining|rest|best investment|suggest|apart from)\b/i.test(name);
+
+const shouldAskLLMForBreakdown = (allocations = []) =>
+  allocations.some((option) => isGenericBucketName(option?.name));
+
 const enrichAllocations = (options, totalAmount) => {
   if (!Array.isArray(options) || !options.length) {
     return [];
@@ -126,42 +131,80 @@ Return ONLY JSON:
 }
 `;
 
+const buildBreakdownPrompt = (message, totalAmount, explicitAllocations) => {
+  const fixedAllocations = explicitAllocations.filter((option) => !isGenericBucketName(option.name));
+  const fixedPercent = fixedAllocations.reduce((sum, option) => sum + option.allocation, 0);
+  const remainingPercent = Math.max(0, Number((100 - fixedPercent).toFixed(2)));
+
+  return `
+User: ${message}
+${totalAmount ? `Total investment amount: ₹${totalAmount}` : ""}
+
+Known fixed allocation from user:
+${fixedAllocations.length ? JSON.stringify(fixedAllocations) : "[]"}
+
+Task:
+1) Keep all fixed allocations exactly as provided.
+2) Replace generic buckets like "other best investment" with concrete options (ETF, index funds, real estate, debt, etc.) based on suitability.
+3) New options must add up to the remaining ${remainingPercent}% exactly (allow rounding ±0.5%).
+4) Exclude duplicate generic labels like "Other Best Investment".
+5) allocation MUST stay as percentage numbers.
+6) If total amount is available, include amount in rupees.
+7) Output ONLY valid JSON.
+
+Return ONLY JSON:
+{
+  "options": [
+    { "name": "", "allocation": number, "amount": number | null }
+  ]
+}
+`;
+};
+
+const askGroq = async (prompt) => {
+  const response = await axios.post(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      model: "llama-3.1-8b-instant",
+      messages: [
+        {
+          role: "system",
+          content: "You are a financial advisor. Always return JSON only."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json"
+      }
+    }
+  );
+
+  return response.data.choices[0].message.content;
+};
+
 exports.getAIResponse = async (message) => {
   const totalAmount = parseTotalAmount(message);
   const explicitPercentAllocations = parseExplicitPercentAllocations(message);
 
-  if (explicitPercentAllocations.length) {
+  if (explicitPercentAllocations.length && !shouldAskLLMForBreakdown(explicitPercentAllocations)) {
     return {
       options: enrichAllocations(explicitPercentAllocations, totalAmount)
     };
   }
 
   try {
-    const response = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: [
-          {
-            role: "system",
-            content: "You are a financial advisor. Always return JSON only."
-          },
-          {
-            role: "user",
-            content: buildPrompt(message, totalAmount)
-          }
-        ],
-        temperature: 0.7
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
-          "Content-Type": "application/json"
-        }
-      }
-    );
+    const prompt = shouldAskLLMForBreakdown(explicitPercentAllocations)
+      ? buildBreakdownPrompt(message, totalAmount, explicitPercentAllocations)
+      : buildPrompt(message, totalAmount);
 
-    const text = response.data.choices[0].message.content;
+    const text = await askGroq(prompt);
 
     try {
       const parsed = JSON.parse(text);
