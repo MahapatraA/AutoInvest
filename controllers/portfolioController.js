@@ -4,6 +4,25 @@ const findPortfolioByUser = async (userId) => {
   return Portfolio.findOne({ $or: [{ user: userId }, { userId }] });
 };
 
+const getInvestmentAmount = (investment = {}) => {
+  const investedAmount = Number(investment.investedAmount);
+  if (Number.isFinite(investedAmount) && investedAmount > 0) {
+    return investedAmount;
+  }
+
+  const amount = Number(investment.amount);
+  if (Number.isFinite(amount) && amount > 0) {
+    return amount;
+  }
+
+  return 0;
+};
+
+const getVisibleInvestments = (investments = []) =>
+  investments
+    .filter((investment) => getInvestmentAmount(investment) > 0)
+    .sort((a, b) => getInvestmentAmount(b) - getInvestmentAmount(a));
+
 
 // ✅ Manual Investment
 const invest = async (req, res) => {
@@ -64,7 +83,12 @@ const getPortfolio = async (req, res) => {
       return res.json({ investments: [] });
     }
 
-    res.json(portfolio);
+    const visibleInvestments = getVisibleInvestments(portfolio.investments);
+
+    res.json({
+      ...portfolio.toObject(),
+      investments: visibleInvestments
+    });
 
   } catch (err) {
     console.error("GET PORTFOLIO ERROR:", err);
@@ -90,12 +114,13 @@ const getDetailed = async (req, res) => {
       });
     }
 
+    const visibleInvestments = getVisibleInvestments(portfolio.investments);
     let totalInvested = 0;
     let totalCurrent = 0;
 
-    portfolio.investments.forEach(inv => {
-      totalInvested += Number(inv.investedAmount || 0);
-      totalCurrent += Number(inv.currentValue || 0);
+    visibleInvestments.forEach(inv => {
+      totalInvested += Number(inv.investedAmount || inv.amount || 0);
+      totalCurrent += Number(inv.currentValue || inv.investedAmount || inv.amount || 0);
     });
 
     const totalReturns = totalCurrent - totalInvested;
@@ -104,7 +129,7 @@ const getDetailed = async (req, res) => {
       totalInvested,
       totalCurrent,
       totalReturns,
-      investments: portfolio.investments
+      investments: visibleInvestments
     });
 
   } catch (err) {
@@ -187,9 +212,11 @@ const updatePrices = async (req, res) => {
 
     await portfolio.save();
 
+    const visibleInvestments = getVisibleInvestments(portfolio.investments);
+
     res.json({
       msg: "Prices updated",
-      investments: portfolio.investments
+      investments: visibleInvestments
     });
 
   } catch (err) {
