@@ -31,7 +31,7 @@ A modern Flutter mobile application for automated investment management with AI-
 AutoInvest is a comprehensive investment management application that leverages AI technology to provide personalized investment recommendations. The app seamlessly integrates with a robust backend API to deliver real-time portfolio management and intelligent financial guidance.
 
 ### Key Highlights:
-- **AI-Powered Investment Assistant** - Get real-time investment advice powered by OpenAI
+- **AI-Powered Investment Assistant** - Get real-time investment advice powered by Groq LLM (LLaMA 3.1)
 - **User Authentication** - Secure login and registration with JWT tokens
 - **Portfolio Management** - Track and manage your investments efficiently
 - **Modern UI/UX** - Material Design 3 with smooth animations
@@ -95,7 +95,7 @@ AutoInvest is a comprehensive investment management application that leverages A
 - **Server:** Node.js/Express
 - **Database:** MongoDB
 - **Authentication:** JWT
-- **AI Integration:** OpenAI API
+- **AI Integration:** Groq LLM (LLaMA 3.1) API
 - **Deployment:** Railway.app
 
 ### Development
@@ -603,7 +603,7 @@ curl https://autoinvest-production.up.railway.app
 #### "Chat not responding"
 - Check internet connection
 - Verify backend AI service is running
-- Check OpenAI API key is configured
+- Check Groq LLM (LLaMA 3.1) API key is configured
 - Try clearing chat history
 
 ### Getting Help
